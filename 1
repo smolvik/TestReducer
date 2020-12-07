@@ -1,0 +1,365 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+
+class DialogApp:
+	
+	def __init__(self, parent, title):
+		print('DialogApp')
+		self.parent = parent
+		
+		self.parent.title(title)
+		self.parent.withdraw()		
+		self.parent.protocol('WM_DELETE_WINDOW', parent.withdraw)
+		self.initUI()
+
+	def initUI(self):
+		pass
+		
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+from oscillapp import OscillApp
+from setupapp import SetupApp
+from monitorapp import MonitorApp
+
+class MainApp():
+	def __init__(self, parent):
+		self.parent = parent
+		self.initUI()
+		
+		self.oscillWnd1 = tkinter.Toplevel(parent)
+		self.oscillApp1 = OscillApp(self.oscillWnd1, "Панель осциллографа канал 1")
+		
+		self.oscillWnd2 = tkinter.Toplevel(parent)
+		self.oscillApp2 = OscillApp(self.oscillWnd2, "Панель осциллографа канал 2")
+		
+		self.setupWnd = tkinter.Toplevel(parent)
+		self.setupApp = SetupApp(self.setupWnd, "Панель управления")
+		
+		self.monitorWnd = tkinter.Toplevel(parent)
+		self.monitorApp = MonitorApp(self.monitorWnd, "Панель индикации")
+		
+	def initUI(self):
+		self.parent.title('Программа управления стендом тестирования редукторов')
+		
+		self.textFrame = tkinter.Frame(self.parent, height = 340, width = 600)
+		self.textFrame.pack(side = 'bottom', fill = 'both', expand = 1)
+		
+		self.textbox = tkinter.Text(self.textFrame, font='Arial 12', wrap='word', foreground='blue')
+		self.scrollbar = tkinter.Scrollbar(self.textFrame)
+
+		self.scrollbar['command'] = self.textbox.yview
+		self.textbox['yscrollcommand'] = self.scrollbar.set
+
+		self.textbox.pack(side = 'left', fill = 'both', expand = 1)
+		self.scrollbar.pack(side = 'right', fill = 'y')		
+		
+		menubar = tkinter.Menu(self.parent, font='Arial 12')
+		self.parent.config(menu=menubar)
+		filemenu = tkinter.Menu(menubar, font='Arial 12')
+		winmenu = tkinter.Menu(menubar, font='Arial 12')
+		helpmenu = tkinter.Menu(menubar, font='Arial 12')
+		
+		filemenu.add_command(label='Выход', command=self.onExit)		
+		winmenu.add_command(label='Панель управления', command=self.setupUp)
+		#winmenu.add_command(label='Панель индикации', command=self.monitorUp)
+		winmenu.add_command(label='Панель осциллографа канал 1', command=self.oscillUp1)
+		winmenu.add_command(label='Панель осциллографа канал 2', command=self.oscillUp2)
+		helpmenu.add_command(label='Руководство', command=self.onMan)
+
+		menubar.add_cascade(label="Файл", menu=filemenu)
+		menubar.add_cascade(label="Окна", menu=winmenu)
+		menubar.add_cascade(label="Помощь", menu=helpmenu)		
+
+		#self.frame = tkinter.Frame(self.parent)
+		
+		#tkinter.Button(self.frame, text = 'Setup', width = 25, command = self.setupUp).pack()		
+		#self.button1 = tkinter.Button(self.frame, text = 'Oscill', width = 25, command = self.oscillUp).pack()
+		#tkinter.Button(self.frame, text = 'Exit', width = 25, command = self.onExit).pack()
+		
+		#self.frame.pack()
+		#self.app = 0
+		
+	def onMan(self): 
+		self.textbox.delete('1.0', 'end') 
+		self.textbox.insert('1.0', open('man.txt', 'rt').read())
+		
+	def setupUp(self):
+		self.setupWnd.deiconify()
+		
+	def monitorUp(self):
+		self.monitorWnd.deiconify()
+		
+	def oscillUp1(self):
+		self.oscillWnd1.deiconify()
+		
+	def oscillUp2(self):
+		self.oscillWnd2.deiconify()		
+		
+	def onExit(self):			
+		self.parent.destroy()
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+from tkinter import ttk
+
+from dialogapp import DialogApp
+
+class MonitorApp(DialogApp):
+	
+	def __init__(self, parent, title):
+		print('OscillApp')
+		DialogApp.__init__(self, parent, title)
+
+
+	def initUI(self):
+		lblst = ['Обороты, об.', 'Крутящий момент, Н*м', 'Скорость вращения, об/мин']
+		f1 = tkinter.LabelFrame(self.parent, text='Входной вал')
+		f2 = tkinter.LabelFrame(self.parent, text = 'Выходной вал')
+		f3 = tkinter.Frame(self.parent)
+		
+		f1.grid(row=0, column=0, padx=5, pady=5, sticky=tkinter.W)
+		f2.grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.W)
+		
+		for i in range(len(lblst)):
+			tkinter.Label(f1, text=lblst[i]).grid(row=i, column=0, padx=5, pady=5, sticky=tkinter.W)
+			tkinter.Label(f2, text=lblst[i]).grid(row=i, column=0, padx=5, pady=5, sticky=tkinter.W)
+			
+			tkinter.Entry(f1, width=10).grid(row=i, column=1, padx=5, pady=5, sticky=tkinter.W)
+			tkinter.Entry(f2, width=10).grid(row=i, column=1, padx=5, pady=5, sticky=tkinter.W)
+		
+		self.progress = ttk.Progressbar(self.parent, orient = tkinter.HORIZONTAL, length = 600, mode = 'determinate')
+		self.progress.grid(row=1, column=0, padx=5, pady=5, columnspan=2)
+		self.progress['value'] = 0
+		
+		tkinter.Button(self.parent, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=2, 
+		column=0, padx=5, pady=5, columnspan=2)
+
+	def update(self, perc):
+		self.progress['value'] = perc
+		
+
+
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+from dialogapp import DialogApp
+
+class OscillApp(DialogApp):
+	
+	def __init__(self, parent, title):
+		print('OscillApp')
+		DialogApp.__init__(self, parent, title)
+		self.buf=0
+
+	def initUI(self):
+		frame = tkinter.Frame(self.parent)
+		frame.pack()
+
+		w=500
+		h=375
+		self.w=w
+		self.h=h
+		
+		self.paintArea = tkinter.Canvas(frame, width = w, height=h, bg='black')
+		self.paintArea.pack(padx=5, pady=5)
+
+		self.paintArea.create_line(0, h/2, w, h/2, fill='white')
+		
+		self.quitButton = tkinter.Button(frame, text = 'Quit', width = 25, command = self.parent.withdraw)
+		self.quitButton.pack()
+				
+	def setupBuf(self, buf):
+		self.buf=buf
+		
+	def update(self):
+		self.paintArea.delete('all')
+		
+		tmax = len(self.buf)
+		t = 0
+		
+		x0 = 0
+		x = x0
+		y0 = self.h/2*(1-self.buf[0])
+		for y in self.buf:
+			x = t*self.w/(tmax-1)
+			y = self.h/2*(1-y)
+			self.paintArea.create_line(x0, y0, x, y, fill='red')
+			x0 = x
+			y0 = y
+			t += 1
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+from tkinter import ttk
+
+from dialogapp import DialogApp
+
+class SetupApp(DialogApp):
+	
+	def __init__(self, parent, title):
+		print('OscillApp')
+		DialogApp.__init__(self, parent, title)
+		self.timerFlag = {'mode':1}
+
+	def initUI(self):
+		
+		lbiolst = ['Обороты, об.', 'Крутящий момент, Н*м', 'Скорость вращения, об/мин']
+		
+		lblst = ['Режим', 'Частота вращения входного вала, об/мин', 
+		'Полный рабочий ход входного вала, об',
+		'Максимальный тормозной крутящий момент на выходном валу, Н*м',
+		'Количество эксплуатационных циклов']
+		
+		modelst = ['ТВП1', 'КРП1', 'ТВП2', 'КРП2', 'ТВП3', 'СРП', 'РПП',
+		'ТВЗ1', 'ТРЗ', 'ТВЗ2', 'УРЗ', 'КРЗ']
+		
+		framepar = tkinter.LabelFrame(self.parent, text='Параметры теста')
+		framein = tkinter.LabelFrame(self.parent, text='Входной вал')
+		frameout = tkinter.LabelFrame(self.parent, text = 'Выходной вал')
+		framebut = tkinter.Frame(self.parent)
+		
+		framepar.grid(row=0, column=0, padx=5, pady=5, columnspan=2, sticky=tkinter.W+tkinter.E)
+		
+		self.progress = ttk.Progressbar(self.parent, orient = tkinter.HORIZONTAL, length = 600, mode = 'determinate')
+		self.progress.grid(row=1, column=0, padx=5, pady=5, columnspan=2, sticky=tkinter.W+tkinter.E)
+		self.progress['value'] = 0		
+		
+		framein.grid(row=2, column=0, padx=5, pady=5)
+		frameout.grid(row=2, column=1, padx=5, pady=5)
+		framebut.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
+		
+		for i in range(len(lbiolst)):
+			tkinter.Label(framein, text=lbiolst[i]).grid(row=i, column=0, padx=5, pady=5, sticky=tkinter.W)
+			tkinter.Label(frameout, text=lbiolst[i]).grid(row=i, column=0, padx=5, pady=5, sticky=tkinter.W)
+			
+			tkinter.Entry(framein, width=10).grid(row=i, column=1, padx=5, pady=5, sticky=tkinter.W)
+			tkinter.Entry(frameout, width=10).grid(row=i, column=1, padx=5, pady=5, sticky=tkinter.W)
+		
+		for i in range(len(lblst)):
+			tkinter.Label(framepar, text=lblst[i]).grid(row=i, column=0, padx=5, pady=5, sticky=tkinter.W)
+			if i ==0:
+				ttk.Combobox(framepar, width=9, values=modelst, state='readonly').grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.W)
+			else:
+				tkinter.Entry(framepar, width=10).grid(row=i, column=1, padx=5, pady=5, sticky=tkinter.E)
+		
+				
+		tkinter.Button(framebut, text = 'Запуск', width = 10, command = self.startproc).grid(row=0, column=1, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Остановка', width = 10, command = self.stopproc).grid(row=0, column=2, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=3, padx=5, pady=5)
+		
+		
+	def stopproc(self):
+		print('stop proc')
+		self.timerFlag['mode'] = 1
+		
+	def startproc(self):
+		print('start proc')
+		self.timerFlag['mode'] = 2
+		
+	def update(self, perc):
+		self.progress['value'] = perc
+		if perc == 100:
+			self.timerFlag['mode'] = 1
+
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+import tkinter
+import math
+import time
+import threading
+from mainapp import MainApp
+import hashlib
+import os
+
+bufSig = 0
+mainApp = 0
+
+class BufSig():
+	def __init__(self):
+		self.buf = []
+		t=0.0
+		tmax=100e-3
+		f=20
+		td = 3e-3
+		while t <= tmax:
+			self.buf.append(math.sin(2*math.pi*f*t))
+			t += td
+			
+		self.t = t
+		self.td = td
+		self.f = f
+
+	def update(self):
+		self.buf.pop(0)
+		self.buf.append(math.sin(2*math.pi*self.f*self.t))
+		self.t += self.td
+
+def timerLoop(args):
+	global bufSig
+	global mainApp
+	
+	while args['mode'] != 0:
+		#time.sleep(1)
+		#print(args)
+		if args['mode'] == 1:
+			print('timer idle')
+			time.sleep(1)
+			continue
+			
+		if args['mode'] == 2:
+			for i in range(100):
+				print('update timer')
+				bufSig.update()
+				mainApp.oscillApp1.update()
+				mainApp.oscillApp2.update()
+				mainApp.setupApp.update(i)
+				mainApp.monitorApp.update(i)
+				time.sleep(0.1)
+			mainApp.setupApp.update(100)
+			
+
+def main():
+	global bufSig
+	global mainApp
+	
+	fd = open('testreducer.py', 'r')
+	txt = fd.read()
+	print( hashlib.md5(bytes(txt, 'utf-8')).hexdigest() )
+	fd.close()
+	
+	txt = ''
+	fllst = os.listdir()
+	for fn in fllst:
+		if fn[-2:] == 'py':
+			print(fn)
+			with open(fn, 'r') as fd:
+				txt += fd.read()
+	print( hashlib.md5(bytes(txt, 'utf-8')).hexdigest() )
+	
+	exit(0)
+	
+	bufSig = BufSig()
+
+	root = tkinter.Tk()	
+	mainApp = MainApp(root)
+	mainApp.oscillApp1.setupBuf(bufSig.buf)
+	mainApp.oscillApp2.setupBuf(bufSig.buf)
+	
+	thrTimer = threading.Thread(target=timerLoop, args=(mainApp.setupApp.timerFlag,), daemon=True)
+	thrTimer.start()
+	
+	root.mainloop()
+	
+	mainApp.setupApp.timerFlag['mode'] = 0
+	thrTimer.join()
+
+if __name__ == '__main__':
+	main()
