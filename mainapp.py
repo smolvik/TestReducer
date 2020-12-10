@@ -5,6 +5,8 @@ import tkinter
 from oscillapp import OscillApp
 from setupapp import SetupApp
 from monitorapp import MonitorApp
+from configapp import ConfigApp
+from cycloconfigapp import CycloConfigApp
 import hashlib
 import os
 
@@ -24,6 +26,12 @@ class MainApp():
 		
 		self.monitorWnd = tkinter.Toplevel(parent)
 		self.monitorApp = MonitorApp(self.monitorWnd, "Панель индикации")
+		
+		self.configWnd = tkinter.Toplevel(parent)
+		self.configApp = ConfigApp(self.configWnd, "Редактор профилей режима эксплуатационного цикла")
+		
+		self.cycloconfigWnd = tkinter.Toplevel(parent)
+		self.cycloconfigApp = CycloConfigApp(self.cycloconfigWnd, "Редактор профилей циклограммы")		
 		
 	def initUI(self):
 		self.parent.title('Программа управления стендом тестирования редукторов')
@@ -46,27 +54,23 @@ class MainApp():
 		winmenu = tkinter.Menu(menubar, font='Arial 12')
 		cmdmenu = tkinter.Menu(menubar, font='Arial 12')
 		
-		filemenu.add_command(label='Выход', command=self.onExit)		
+		filemenu.add_command(label='Отчет', command=self.onExit)
+		filemenu.add_command(label='Выход', command=self.onExit)
+		
+		winmenu.add_command(label='Редактор циклограмм', command=self.cycloconfigUp)
+		winmenu.add_command(label='Редактор профилей', command=self.configUp)
 		winmenu.add_command(label='Панель управления', command=self.setupUp)
 		winmenu.add_command(label='Панель индикации', command=self.monitorUp)
 		winmenu.add_command(label='Панель осциллографа канал 1', command=self.oscillUp1)
 		winmenu.add_command(label='Панель осциллографа канал 2', command=self.oscillUp2)
-		cmdmenu.add_command(label='Руководство', command=self.onMan)
+		
 		cmdmenu.add_command(label='О программе', command=self.onAbout)
+		cmdmenu.add_command(label='Проверка готовности', command=self.onCheck)
 
 		menubar.add_cascade(label="Файл", menu=filemenu)
 		menubar.add_cascade(label="Команды", menu=cmdmenu)
 		menubar.add_cascade(label="Окна", menu=winmenu)
 
-		#self.frame = tkinter.Frame(self.parent)
-		
-		#tkinter.Button(self.frame, text = 'Setup', width = 25, command = self.setupUp).pack()		
-		#self.button1 = tkinter.Button(self.frame, text = 'Oscill', width = 25, command = self.oscillUp).pack()
-		#tkinter.Button(self.frame, text = 'Exit', width = 25, command = self.onExit).pack()
-		
-		#self.frame.pack()
-		#self.app = 0
-		
 	def onAbout(self):
 		
 		hashobj = hashlib.md5()
@@ -80,9 +84,15 @@ class MainApp():
 		self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
 		self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
 		
-	def onMan(self): 
+	def onCheck(self):
 		self.textbox.delete('1.0', 'end') 
 		self.textbox.insert('1.0', open('man.txt', 'rt').read())
+		
+	def cycloconfigUp(self):
+		self.cycloconfigWnd.deiconify()
+				
+	def configUp(self):
+		self.configWnd.deiconify()
 		
 	def setupUp(self):
 		self.setupWnd.deiconify()

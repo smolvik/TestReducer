@@ -26,6 +26,12 @@ class BufSig():
 		self.t = t
 		self.td = td
 		self.f = f
+		
+	def __str__(self):
+		return 'hello from BufSig'
+		
+	def __repr__(self):
+		return 'It is a class BufSig'
 
 	def update(self):
 		self.buf.pop(0)
@@ -46,6 +52,9 @@ def timerLoop(args):
 			
 		if args['mode'] == 2:
 			for i in range(100):
+				if args['mode'] != 2:
+					break
+				
 				print('update timer')
 				bufSig.update()
 				mainApp.oscillApp1.update()
@@ -68,12 +77,12 @@ def main():
 	mainApp.oscillApp2.setupBuf(bufSig.buf)
 	
 	thrTimer = threading.Thread(target=timerLoop, args=(mainApp.setupApp.timerFlag,), daemon=True)
-	thrTimer.start()
+	#thrTimer.start()
 	
 	root.mainloop()
 	
 	mainApp.setupApp.timerFlag['mode'] = 0
-	thrTimer.join()
+	#thrTimer.join()
 
 if __name__ == '__main__':
 	main()
