@@ -15,23 +15,31 @@ class MainApp():
 		self.parent = parent
 		self.initUI()
 		
+		self.logmsg = []
+		
 		self.oscillWnd1 = tkinter.Toplevel(parent)
+		self.oscillWnd1.transient(parent) # window always at the foreground
 		self.oscillApp1 = OscillApp(self.oscillWnd1, "Панель осциллографа канал 1")
 		
 		self.oscillWnd2 = tkinter.Toplevel(parent)
+		self.oscillWnd2.transient(parent) # window always at the foreground
 		self.oscillApp2 = OscillApp(self.oscillWnd2, "Панель осциллографа канал 2")
 		
 		self.setupWnd = tkinter.Toplevel(parent)
+		self.setupWnd.transient(parent) # window always at the foreground
 		self.setupApp = SetupApp(self.setupWnd, "Панель управления")
 		
 		self.monitorWnd = tkinter.Toplevel(parent)
+		self.monitorWnd.transient(parent) # window always at the foreground
 		self.monitorApp = MonitorApp(self.monitorWnd, "Панель индикации")
 		
 		self.configWnd = tkinter.Toplevel(parent)
+		self.configWnd.transient(parent) # window always at the foreground
 		self.configApp = ConfigApp(self.configWnd, "Редактор профилей режима эксплуатационного цикла")
 		
 		self.cycloconfigWnd = tkinter.Toplevel(parent)
-		self.cycloconfigApp = CycloConfigApp(self.cycloconfigWnd, "Редактор профилей циклограммы")		
+		self.cycloconfigWnd.transient(parent) # window always at the foreground
+		self.cycloconfigApp = CycloConfigApp(self.cycloconfigWnd, "Редактор профилей циклограммы", self.updateLogMsg)
 		
 	def initUI(self):
 		self.parent.title('Программа управления стендом тестирования редукторов')
@@ -81,12 +89,13 @@ class MainApp():
 				#print(fn)
 				hashobj.update(open(fn, "rb").read())		
 		
-		self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
-		self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
+		#self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
+		#self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
+		self.updateLogMsg('Программа для управления САУ в1.1\n')
+		self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
 		
 	def onCheck(self):
-		self.textbox.delete('1.0', 'end') 
-		self.textbox.insert('1.0', open('man.txt', 'rt').read())
+		self.updateLogMsg(open('man.txt', 'rt').read())
 		
 	def cycloconfigUp(self):
 		self.cycloconfigWnd.deiconify()
@@ -108,3 +117,12 @@ class MainApp():
 		
 	def onExit(self):			
 		self.parent.destroy()
+		
+	def updateLogMsg(self, msg):
+		self.logmsg.append(msg)
+		if len(self.logmsg) > 4:
+			self.logmsg.pop(0)
+		
+		self.textbox.delete('1.0', 'end')
+		for s in self.logmsg:
+			self.textbox.insert(tkinter.INSERT, s)

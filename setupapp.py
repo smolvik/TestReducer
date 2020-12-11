@@ -3,7 +3,7 @@
 
 import tkinter
 from tkinter import ttk
-
+import sqlite3
 from dialogapp import DialogApp
 
 class SetupApp(DialogApp):
@@ -11,8 +11,24 @@ class SetupApp(DialogApp):
 	
 	def __init__(self, parent, title):
 		print('OscillApp')
-		DialogApp.__init__(self, parent, title)
 		
+		self.param = []
+		self.param.append(tkinter.StringVar())
+		self.param.append(tkinter.IntVar())
+		self.param.append(tkinter.DoubleVar())
+		self.param.append(tkinter.IntVar())
+		self.param.append(tkinter.DoubleVar())
+		self.param.append(tkinter.StringVar())
+		
+		self.cycparam = []
+		for i in range(5):
+			self.cycparam.append((tkinter.IntVar(),tkinter.IntVar()))
+		
+		self.currprofName = tkinter.StringVar()
+		self.numCycles = tkinter.IntVar()
+		self.numCycles.set(1)
+		
+		DialogApp.__init__(self, parent, title)
 
 	def initUI(self):
 		
@@ -23,32 +39,66 @@ class SetupApp(DialogApp):
 		framepar = tkinter.LabelFrame(self.parent, text='Параметры цикла')
 		frameprof = tkinter.Frame(self.parent)
 		frametst = tkinter.LabelFrame(self.parent, text='Параметры испытания')
+		framecyc = tkinter.LabelFrame(self.parent, text='Параметры циклограммы')
 		framebut = tkinter.Frame(self.parent)
 		
 		frameprof.grid(row=0, column=0, padx=5, pady=5, sticky=tkinter.W)
 		framepar.grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
-		frametst.grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
-		framebut.grid(row=3, column=0, padx=5, pady=5, sticky=tkinter.W)
+		framecyc.grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
+		frametst.grid(row=3, column=0, padx=5, pady=5, sticky=tkinter.W)
+		framebut.grid(row=4, column=0, padx=5, pady=5, sticky=tkinter.W)
 
-		proflst=['a','b','c']
 		tkinter.Label(framepar, text='Выбор профиля для загрузки').grid(row=0, column=0, padx=5, pady=5, sticky=tkinter.W)
-		ttk.Combobox(framepar, width=10, values=proflst, state='readonly').grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.E)					
+		self.cboxProf = ttk.Combobox(framepar, width=10, values=[], state='readonly', postcommand = self.updproflst, textvariable = self.currprofName)
+		self.cboxProf.grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.E)
 		tkinter.Button(framepar, text = 'Загрузить', width = 10, command = self.loadprofile).grid(row=0, column=2, padx=5, pady=5)
 		
 		for i in range(len(parlst)):
 			tkinter.Label(framepar, text=parlst[i]).grid(row=i+1, column=0, padx=5, pady=5, sticky=tkinter.W)
-			tkinter.Entry(framepar, width=10, state='readonly').grid(row=i+1, column=1, columnspan=2, padx=5, pady=5, sticky=tkinter.E)
-			
+			tkinter.Entry(framepar, width=10, state='readonly', textvariable = self.param[i]).grid(row=i+1, column=1, columnspan=2, padx=5, pady=5, sticky=tkinter.E)
 
+		tkinter.Label(framecyc, text='Рабочий ход входного вала').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Label(framecyc, text='Тормозной крутящий момент').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
+		i=0
+		for j in range(1, 6):
+			tkinter.Entry(framecyc, width=4, state='readonly', textvariable = self.cycparam[i][0]).grid(row=1, column=j, padx=5, pady=5, sticky=tkinter.W)
+			tkinter.Entry(framecyc, width=4, state='readonly', textvariable = self.cycparam[i][1]).grid(row=2, column=j, padx=5, pady=5, sticky=tkinter.W)
+			i = i+1
+			
 		tkinter.Label(frametst, text='Кол-во циклов').grid(row=0, column=0, padx=5, pady=5, sticky=tkinter.W)
-		tkinter.Entry(frametst, width=10, ).grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.E)
-		svlst=['a','b','c']
+		tkinter.Entry(frametst, width=10, textvariable=self.numCycles, validate='all', validatecommand = (frametst.register(self.validateNumCycl), '%P')).grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.E)
+		svlst=['Каждый','Первый, каждый десятый, последний','Первый, каждый сотый, последний', 'Первый, каждый тысячный, последний']
 		tkinter.Label(frametst, text='Частота сохранения результатов').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
-		ttk.Combobox(frametst, width=10, values=svlst, state='readonly').grid(row=1, column=1, padx=5, pady=5, sticky=tkinter.E)					
+		ttk.Combobox(frametst, width=40, values=svlst, state='readonly').grid(row=1, column=1, padx=5, pady=5, sticky=tkinter.E)					
 				
 		tkinter.Button(framebut, text = 'Запуск', width = 10, command = self.startproc).grid(row=0, column=1, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Остановка', width = 10, command = self.stopproc).grid(row=0, column=2, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=3, padx=5, pady=5)
+		
+	def validateNumCycl(self, what):
+		print('num cycl validation')
+
+		try:
+			ncyc = int(what)
+		except ValueError:
+			return False
+			
+		if ncyc > 108000 or ncyc < 1:
+			return False
+		else:
+			return True
+
+		
+	def updproflst(self):
+		print('get profiles list')
+		
+		conn = sqlite3.connect('trd.db')
+		cursor = conn.cursor()
+		lst = cursor.execute("select name from Profiles").fetchall()
+		conn.close()
+				
+		print(lst)
+		self.cboxProf['values'] = lst
 		
 	def stopproc(self):
 		print('stop proc')
@@ -64,4 +114,37 @@ class SetupApp(DialogApp):
 			
 	def loadprofile(self):
 		print('load profile')
+		name = self.currprofName.get()
+		print('load profile:' + name)
+		if name=='':
+			return
+		
+		conn = sqlite3.connect('trd.db')
+		cursor = conn.cursor()
+
+		sql = """select Profiles.name, Profiles.speed_in, Profiles.rd_ratio, 
+		Profiles.numrot_in, Profiles.max_torque_out, Cyclograms.name,  
+		Cyclograms.n1, Cyclograms.n2, Cyclograms.n3, Cyclograms.n4, Cyclograms.n5,
+		Cyclograms.m1, Cyclograms.m2, Cyclograms.m3, Cyclograms.m4, Cyclograms.m5
+		from Profiles left join Cyclograms on(Profiles.cyclogram_id==Cyclograms.id)
+		where Profiles.name=='{}'""".format(name)
+		lst = cursor.execute(sql).fetchone()
+		conn.close()
+		
+		print(lst)
+		
+		# data is sorted by the first element
+		cyc = sorted(list(zip(lst[6:11], lst[11:16])), key=lambda l: l[0])
+		print(cyc)
+		
+		i = 0
+		for p in self.param:
+			p.set(lst[i])
+			i+=1		
+			
+		i = 0
+		for p in self.cycparam:
+			p[0].set(cyc[i][0])
+			p[1].set(cyc[i][1])
+			i+=1
 

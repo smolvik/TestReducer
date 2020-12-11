@@ -122,15 +122,22 @@ class ConfigApp(DialogApp):
 			val.append(i.get())
 		print(val)
 		
-		# delete old row with name
 		name = val[0]
-		cursor.execute("delete from Profiles where name="+"'"+name+"'")
-		# insert new one
-		#sql = ''' INSERT INTO Profiles(name,speed_in,rd_ratio,numrot_in,max_torque_out,cyclogram_id) VALUES(?,?,?,?,?,?) '''
-		sql = """INSERT INTO Profiles(name,speed_in,rd_ratio,numrot_in,max_torque_out,cyclogram_id)
-		VALUES(?,?,?,?,?,(select id from Cyclograms where name='{}')) """.format(val[-1])
-		cursor.execute(sql, val[:-1])
-
+		cycname = val[-1]
+		if cursor.execute("select exists(select * from Profiles where name='{}')".format(name)).fetchone()[0]:
+			# row exists
+			# update one
+			sql = """update Profiles
+			set speed_in=?,rd_ratio=?,numrot_in=?,max_torque_out=?,cyclogram_id=(select id from Cyclograms where name='{}')
+			where name='{}'""".format(cycname, name)
+			cursor.execute(sql, val[1:-1])
+		else:
+			# row does not exist
+			# insert new one
+			sql = """INSERT INTO Profiles(name,speed_in,rd_ratio,numrot_in,max_torque_out,cyclogram_id)
+			VALUES(?,?,?,?,?,(select id from Cyclograms where name='{}')) """.format(val[-1])
+			cursor.execute(sql, val[:-1])
+		
 		conn.commit()
 		conn.close()
 		

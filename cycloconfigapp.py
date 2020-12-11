@@ -8,8 +8,10 @@ import sqlite3
 
 class CycloConfigApp(DialogApp):
 	
-	def __init__(self, parent, title):
+	def __init__(self, parent, title, prc):
 		print('CycloConfigApp')
+		
+		self.logProc = prc
 		
 		self.param1 = []
 		self.param2 = []
@@ -54,6 +56,7 @@ class CycloConfigApp(DialogApp):
 	def loadprofile(self):
 		name = self.currprofName.get()
 		print('load Cyclogram:' + name)
+		self.logProc('load Cyclogram:{}\n'.format(name))
 		
 		if name=='':
 			return
@@ -96,6 +99,7 @@ class CycloConfigApp(DialogApp):
 		print('save Cyclogram to db')
 		
 		conn = sqlite3.connect('trd.db')
+		conn.execute("PRAGMA foreign_keys = 1")
 		cursor = conn.cursor()
 		
 		name = self.cycloName.get()
@@ -107,12 +111,20 @@ class CycloConfigApp(DialogApp):
 			val.append(i.get())
 		print(val)
 		
-		# delete old row with name
-		cursor.execute("delete from Cyclograms where name="+"'"+name+"'")
-		# insert new one
-		sql = ''' INSERT INTO Cyclograms(name,n1,n2,n3,n4,n5,m1,m2,m3,m4,m5) VALUES(?,?,?,?,?,?,?,?,?,?,?) '''
-		cursor.execute(sql, val)
-		
+		if cursor.execute("select exists(select * from Cyclograms where name='{}')".format(name)).fetchone()[0]:
+			# row exists
+			# update one
+			sql = """update Cyclograms
+			set n1=?,n2=?,n3=?,n4=?,n5=?,m1=?,m2=?,m3=?,m4=?,m5=?
+			where name='{}'""".format(name)
+			cursor.execute(sql, val[1:])
+		else:
+			# row does not exist
+			# insert new one
+			sql = ''' INSERT INTO Cyclograms(name,n1,n2,n3,n4,n5,m1,m2,m3,m4,m5) 
+			VALUES(?,?,?,?,?,?,?,?,?,?,?) '''
+			cursor.execute(sql, val)			
+
 		conn.commit()
 		conn.close()
 		
@@ -124,6 +136,7 @@ class CycloConfigApp(DialogApp):
 		sql = "delete from Cyclograms where name="+"'"+name+"'"
 		
 		conn = sqlite3.connect('trd.db')
+		conn.execute("PRAGMA foreign_keys = 1")
 		cursor = conn.cursor()
 		cursor.execute(sql)
 		
