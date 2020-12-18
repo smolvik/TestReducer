@@ -5,9 +5,11 @@ import tkinter
 
 class DialogApp:
 	
-	def __init__(self, parent, title):
+	def __init__(self, parent, title, prc=None):
 		print('DialogApp')
 		self.parent = parent
+		
+		self.logProc = prc
 		
 		self.parent.title(title)
 		self.parent.withdraw()		

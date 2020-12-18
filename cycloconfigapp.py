@@ -11,8 +11,6 @@ class CycloConfigApp(DialogApp):
 	def __init__(self, parent, title, prc):
 		print('CycloConfigApp')
 		
-		self.logProc = prc
-		
 		self.param1 = []
 		self.param2 = []
 		for i in range(5):
@@ -22,7 +20,7 @@ class CycloConfigApp(DialogApp):
 		self.currprofName = tkinter.StringVar()
 		self.cycloName = tkinter.StringVar()
 		
-		DialogApp.__init__(self, parent, title)
+		DialogApp.__init__(self, parent, title, prc)
 
 	def initUI(self):
 		
@@ -37,8 +35,8 @@ class CycloConfigApp(DialogApp):
 		tkinter.Label(framepar, text='Наименование профиля').grid(row=0, column=0, padx=5, pady=5, sticky=tkinter.W)
 		tkinter.Entry(framepar, width=10, textvariable = self.cycloName).grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky=tkinter.E)
 		
-		tkinter.Label(framepar, text='Рабочий ход входного вала').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
-		tkinter.Label(framepar, text='Тормозной крутящий момент').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Label(framepar, text='Рабочий ход входного вала %').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Label(framepar, text='Тормозной крутящий момент %').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
 		for i in range(len(self.param1)):
 			tkinter.Entry(framepar, width=4, textvariable = self.param1[i], validate='all', validatecommand = (framepar.register(self.percValidate), '%P')).grid(row=1, column=i+1, padx=5, pady=5, sticky=tkinter.W)
 			tkinter.Entry(framepar, width=4, textvariable = self.param2[i], validate='all', validatecommand = (framepar.register(self.percValidate), '%P')).grid(row=2, column=i+1, padx=5, pady=5, sticky=tkinter.W)
@@ -56,15 +54,23 @@ class CycloConfigApp(DialogApp):
 	def loadprofile(self):
 		name = self.currprofName.get()
 		print('load Cyclogram:' + name)
-		self.logProc('load Cyclogram:{}\n'.format(name))
-		
+				
 		if name=='':
 			return
 		
 		conn = sqlite3.connect('trd.db')
 		cursor = conn.cursor()
 		sql = "select * from Cyclograms where name="+"'"+name+"'"
-		lst = cursor.execute(sql).fetchone()
+		lst=[]
+		try:
+			lst = cursor.execute(sql).fetchone()
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return 
+		else:
+			self.logProc('Запись успешно загружена\n')
+		
 		conn.close()
 		
 		print(lst)
@@ -111,23 +117,29 @@ class CycloConfigApp(DialogApp):
 			val.append(i.get())
 		print(val)
 		
-		if cursor.execute("select exists(select * from Cyclograms where name='{}')".format(name)).fetchone()[0]:
-			# row exists
-			# update one
-			sql = """update Cyclograms
-			set n1=?,n2=?,n3=?,n4=?,n5=?,m1=?,m2=?,m3=?,m4=?,m5=?
-			where name='{}'""".format(name)
-			cursor.execute(sql, val[1:])
+		try:
+			if cursor.execute("select exists(select * from Cyclograms where name='{}')".format(name)).fetchone()[0]:
+				# row exists
+				# update one
+				sql = """update Cyclograms
+				set n1=?,n2=?,n3=?,n4=?,n5=?,m1=?,m2=?,m3=?,m4=?,m5=?
+				where name='{}'""".format(name)
+				cursor.execute(sql, val[1:])
+			else:
+				# row does not exist
+				# insert new one
+				sql = ''' INSERT INTO Cyclograms(name,n1,n2,n3,n4,n5,m1,m2,m3,m4,m5) 
+				VALUES(?,?,?,?,?,?,?,?,?,?,?) '''
+				cursor.execute(sql, val)
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return 
 		else:
-			# row does not exist
-			# insert new one
-			sql = ''' INSERT INTO Cyclograms(name,n1,n2,n3,n4,n5,m1,m2,m3,m4,m5) 
-			VALUES(?,?,?,?,?,?,?,?,?,?,?) '''
-			cursor.execute(sql, val)			
+			self.logProc('Запись успешно сохранена\n')
+			conn.commit()
+			conn.close()
 
-		conn.commit()
-		conn.close()
-		
 	# remove selected profile from the database
 	def rmproc(self):
 		print('rm proc')
@@ -138,12 +150,16 @@ class CycloConfigApp(DialogApp):
 		conn = sqlite3.connect('trd.db')
 		conn.execute("PRAGMA foreign_keys = 1")
 		cursor = conn.cursor()
-		cursor.execute(sql)
-		
-		conn.commit()
-		conn.close()
-		
-		self.cboxProf.set('')
+		try:
+			cursor.execute(sql)
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+		else:
+			self.logProc('Запись успешно удалена\n')
+			conn.commit()
+			conn.close()
+			self.cboxProf.set('')
 	
 	def percValidate(self, what):
 		print('percent validation')

@@ -5,12 +5,24 @@ import tkinter
 from tkinter import ttk
 import sqlite3
 from dialogapp import DialogApp
+import threading
+from enum import IntEnum
 
 class SetupApp(DialogApp):
+	
+	class CmdEnum(IntEnum):
+		STOP=0
+		START=1
+		EXIT=2
+	
 	timerFlag = {'mode':1}
 	
-	def __init__(self, parent, title):
+	def __init__(self, parent, title, prc):
 		print('OscillApp')
+		
+		self.cmdParam={}
+		
+		self.cmdQueue = []
 		
 		self.param = []
 		self.param.append(tkinter.StringVar())
@@ -28,7 +40,7 @@ class SetupApp(DialogApp):
 		self.numCycles = tkinter.IntVar()
 		self.numCycles.set(1)
 		
-		DialogApp.__init__(self, parent, title)
+		DialogApp.__init__(self, parent, title, prc)
 
 	def initUI(self):
 		
@@ -57,8 +69,8 @@ class SetupApp(DialogApp):
 			tkinter.Label(framepar, text=parlst[i]).grid(row=i+1, column=0, padx=5, pady=5, sticky=tkinter.W)
 			tkinter.Entry(framepar, width=10, state='readonly', textvariable = self.param[i]).grid(row=i+1, column=1, columnspan=2, padx=5, pady=5, sticky=tkinter.E)
 
-		tkinter.Label(framecyc, text='Рабочий ход входного вала').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
-		tkinter.Label(framecyc, text='Тормозной крутящий момент').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Label(framecyc, text='Рабочий ход входного вала %').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Label(framecyc, text='Тормозной крутящий момент %').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
 		i=0
 		for j in range(1, 6):
 			tkinter.Entry(framecyc, width=4, state='readonly', textvariable = self.cycparam[i][0]).grid(row=1, column=j, padx=5, pady=5, sticky=tkinter.W)
@@ -69,9 +81,11 @@ class SetupApp(DialogApp):
 		tkinter.Entry(frametst, width=10, textvariable=self.numCycles, validate='all', validatecommand = (frametst.register(self.validateNumCycl), '%P')).grid(row=0, column=1, padx=5, pady=5, sticky=tkinter.E)
 		svlst=['Каждый','Первый, каждый десятый, последний','Первый, каждый сотый, последний', 'Первый, каждый тысячный, последний']
 		tkinter.Label(frametst, text='Частота сохранения результатов').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
-		ttk.Combobox(frametst, width=40, values=svlst, state='readonly').grid(row=1, column=1, padx=5, pady=5, sticky=tkinter.E)					
+		self.cboxSaveMode = ttk.Combobox(frametst, width=40, values=svlst, state='readonly')
+		self.cboxSaveMode.grid(row=1, column=1, padx=5, pady=5, sticky=tkinter.E)
 				
-		tkinter.Button(framebut, text = 'Запуск', width = 10, command = self.startproc).grid(row=0, column=1, padx=5, pady=5)
+		self.startBut = tkinter.Button(framebut, text = 'Запуск', state=tkinter.DISABLED, width = 10, command = self.startproc)
+		self.startBut.grid(row=0, column=1, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Остановка', width = 10, command = self.stopproc).grid(row=0, column=2, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=3, padx=5, pady=5)
 		
@@ -102,11 +116,17 @@ class SetupApp(DialogApp):
 		
 	def stopproc(self):
 		print('stop proc')
-		self.timerFlag['mode'] = 1
+		self.cmdParam['cmd'] = self.CmdEnum.STOP
+		self.cmdQueue.append(self.cmdParam)
 		
 	def startproc(self):
 		print('start proc')
-		self.timerFlag['mode'] = 2
+		self.cmdParam['savemod'] = self.cboxSaveMode.current()
+		self.cmdParam['numcyc'] = self.numCycles.get()
+		self.cmdParam['cmd'] = self.CmdEnum.START
+		print(self.cmdParam)
+		
+		self.cmdQueue.append(self.cmdParam)
 		
 	def update(self, perc):
 		if perc == 100:
@@ -128,23 +148,36 @@ class SetupApp(DialogApp):
 		Cyclograms.m1, Cyclograms.m2, Cyclograms.m3, Cyclograms.m4, Cyclograms.m5
 		from Profiles left join Cyclograms on(Profiles.cyclogram_id==Cyclograms.id)
 		where Profiles.name=='{}'""".format(name)
-		lst = cursor.execute(sql).fetchone()
-		conn.close()
 		
-		print(lst)
-		
+		lst=[]
+		try:
+			lst = cursor.execute(sql).fetchone()
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return
+		else:
+			self.logProc('Запись успешно загружена\n')
+			self.startBut['state'] = tkinter.NORMAL
+			conn.close()
+
 		# data is sorted by the first element
 		cyc = sorted(list(zip(lst[6:11], lst[11:16])), key=lambda l: l[0])
 		print(cyc)
 		
+		self.cmdParam['speed_in'] = lst[1]
+		self.cmdParam['rd_ratio'] = lst[2]
+		self.cmdParam['numrot_in'] = lst[3]
+		self.cmdParam['max_torque_out'] = lst[4]
+		self.cmdParam['cyclo'] = cyc[:]
+
 		i = 0
 		for p in self.param:
 			p.set(lst[i])
-			i+=1		
+			i+=1
 			
 		i = 0
 		for p in self.cycparam:
 			p[0].set(cyc[i][0])
 			p[1].set(cyc[i][1])
 			i+=1
-

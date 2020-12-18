@@ -8,7 +8,7 @@ import sqlite3
 
 class ConfigApp(DialogApp):
 	
-	def __init__(self, parent, title):
+	def __init__(self, parent, title, prc):
 		print('ConfigApp')
 		
 		self.param = []
@@ -22,7 +22,7 @@ class ConfigApp(DialogApp):
 		
 		self.currprofName = tkinter.StringVar()
 		
-		DialogApp.__init__(self, parent, title)
+		DialogApp.__init__(self, parent, title, prc)
 
 	def initUI(self):
 		
@@ -74,11 +74,17 @@ class ConfigApp(DialogApp):
 		Profiles.numrot_in, Profiles.max_torque_out, Cyclograms.name 
 		from Profiles left join Cyclograms on(Profiles.cyclogram_id==Cyclograms.id)
 		where Profiles.name=="""+"'"+name+"'"
-		lst = cursor.execute(sql).fetchone()
-		conn.close()
-		
-		print(lst)
-		
+		lst =[]
+		try:
+			lst = cursor.execute(sql).fetchone()
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return
+		else:
+			self.logProc('Запись успешно загружена\n')
+			conn.close()
+	
 		i = 0
 		for p in self.param:
 			p.set(lst[i])
@@ -122,24 +128,30 @@ class ConfigApp(DialogApp):
 			val.append(i.get())
 		print(val)
 		
-		name = val[0]
-		cycname = val[-1]
-		if cursor.execute("select exists(select * from Profiles where name='{}')".format(name)).fetchone()[0]:
-			# row exists
-			# update one
-			sql = """update Profiles
-			set speed_in=?,rd_ratio=?,numrot_in=?,max_torque_out=?,cyclogram_id=(select id from Cyclograms where name='{}')
-			where name='{}'""".format(cycname, name)
-			cursor.execute(sql, val[1:-1])
+		try:
+			name = val[0]
+			cycname = val[-1]
+			if cursor.execute("select exists(select * from Profiles where name='{}')".format(name)).fetchone()[0]:
+				# row exists
+				# update one
+				sql = """update Profiles
+				set speed_in=?,rd_ratio=?,numrot_in=?,max_torque_out=?,cyclogram_id=(select id from Cyclograms where name='{}')
+				where name='{}'""".format(cycname, name)
+				cursor.execute(sql, val[1:-1])
+			else:
+				# row does not exist
+				# insert new one
+				sql = """INSERT INTO Profiles(name,speed_in,rd_ratio,numrot_in,max_torque_out,cyclogram_id)
+				VALUES(?,?,?,?,?,(select id from Cyclograms where name='{}')) """.format(val[-1])
+				cursor.execute(sql, val[:-1])
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return 
 		else:
-			# row does not exist
-			# insert new one
-			sql = """INSERT INTO Profiles(name,speed_in,rd_ratio,numrot_in,max_torque_out,cyclogram_id)
-			VALUES(?,?,?,?,?,(select id from Cyclograms where name='{}')) """.format(val[-1])
-			cursor.execute(sql, val[:-1])
-		
-		conn.commit()
-		conn.close()
+			self.logProc('Запись успешно сохранена\n')
+			conn.commit()
+			conn.close()
 		
 	# remove selected profile from the database
 	def rmproc(self):
@@ -150,13 +162,19 @@ class ConfigApp(DialogApp):
 		
 		conn = sqlite3.connect('trd.db')
 		cursor = conn.cursor()
-		cursor.execute(sql)
 		
-		conn.commit()
-		conn.close()
-		
-		self.cboxProf.set('')
-	
+		try:
+			cursor.execute(sql)
+		except Exception as err:
+			self.logProc('Ошибка базы данных: {}\n'.format(err))
+			conn.close()
+			return
+		else:
+			self.logProc('Запись успешно удалена\n')
+			conn.commit()
+			conn.close()
+			self.cboxProf.set('')
+
 	def cyclogramValidate(self, what):
 		print('cyclogram validation')
 

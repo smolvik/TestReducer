@@ -6,9 +6,9 @@ from dialogapp import DialogApp
 
 class OscillApp(DialogApp):
 	
-	def __init__(self, parent, title):
+	def __init__(self, parent, title, prc):
 		print('OscillApp')
-		DialogApp.__init__(self, parent, title)
+		DialogApp.__init__(self, parent, title, prc)
 		self.buf=0
 
 	def initUI(self):
@@ -28,15 +28,18 @@ class OscillApp(DialogApp):
 		self.quitButton = tkinter.Button(frame, text = 'Quit', width = 25, command = self.parent.withdraw)
 		self.quitButton.pack()
 				
-	def setupBuf(self, buf):
+	def setupBuf(self, buf, nmax):
 		self.buf=buf
+		self.nmax = nmax
 		
 	def update(self):
 		self.paintArea.delete('all')
 		
-		tmax = len(self.buf)
-		t = 0
+		tmax = self.nmax
+		if tmax <= 1:
+			return
 		
+		t = 0		
 		x0 = 0
 		x = x0
 		y0 = self.h/2*(1-self.buf[0])

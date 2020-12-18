@@ -9,36 +9,38 @@ from configapp import ConfigApp
 from cycloconfigapp import CycloConfigApp
 import hashlib
 import os
+from datetime import datetime
 
 class MainApp():
 	def __init__(self, parent):
 		self.parent = parent
+		
 		self.initUI()
 		
 		self.logmsg = []
 		
 		self.oscillWnd1 = tkinter.Toplevel(parent)
-		self.oscillWnd1.transient(parent) # window always at the foreground
-		self.oscillApp1 = OscillApp(self.oscillWnd1, "Панель осциллографа канал 1")
+		#self.oscillWnd1.transient(parent) # window always at the foreground
+		self.oscillApp1 = OscillApp(self.oscillWnd1, "Панель осциллографа канал 1", self.updateLogMsg)
 		
 		self.oscillWnd2 = tkinter.Toplevel(parent)
-		self.oscillWnd2.transient(parent) # window always at the foreground
-		self.oscillApp2 = OscillApp(self.oscillWnd2, "Панель осциллографа канал 2")
+		#self.oscillWnd2.transient(parent) # window always at the foreground
+		self.oscillApp2 = OscillApp(self.oscillWnd2, "Панель осциллографа канал 2", self.updateLogMsg)
 		
 		self.setupWnd = tkinter.Toplevel(parent)
-		self.setupWnd.transient(parent) # window always at the foreground
-		self.setupApp = SetupApp(self.setupWnd, "Панель управления")
+		#self.setupWnd.transient(parent) # window always at the foreground
+		self.setupApp = SetupApp(self.setupWnd, "Панель управления", self.updateLogMsg)
 		
 		self.monitorWnd = tkinter.Toplevel(parent)
-		self.monitorWnd.transient(parent) # window always at the foreground
-		self.monitorApp = MonitorApp(self.monitorWnd, "Панель индикации")
+		#self.monitorWnd.transient(parent) # window always at the foreground
+		self.monitorApp = MonitorApp(self.monitorWnd, "Панель индикации", self.updateLogMsg)
 		
 		self.configWnd = tkinter.Toplevel(parent)
-		self.configWnd.transient(parent) # window always at the foreground
-		self.configApp = ConfigApp(self.configWnd, "Редактор профилей режима эксплуатационного цикла")
+		#self.configWnd.transient(parent) # window always at the foreground
+		self.configApp = ConfigApp(self.configWnd, "Редактор профилей режима эксплуатационного цикла", self.updateLogMsg)
 		
 		self.cycloconfigWnd = tkinter.Toplevel(parent)
-		self.cycloconfigWnd.transient(parent) # window always at the foreground
+		#self.cycloconfigWnd.transient(parent) # window always at the foreground
 		self.cycloconfigApp = CycloConfigApp(self.cycloconfigWnd, "Редактор профилей циклограммы", self.updateLogMsg)
 		
 	def initUI(self):
@@ -54,13 +56,13 @@ class MainApp():
 		self.textbox['yscrollcommand'] = self.scrollbar.set
 
 		self.textbox.pack(side = 'left', fill = 'both', expand = 1)
-		self.scrollbar.pack(side = 'right', fill = 'y')		
+		self.scrollbar.pack(side = 'right', fill = 'y')
 		
-		menubar = tkinter.Menu(self.parent, font='Arial 12')
+		menubar = tkinter.Menu(self.parent) #font='Arial 12'
 		self.parent.config(menu=menubar)
-		filemenu = tkinter.Menu(menubar, font='Arial 12')
-		winmenu = tkinter.Menu(menubar, font='Arial 12')
-		cmdmenu = tkinter.Menu(menubar, font='Arial 12')
+		filemenu = tkinter.Menu(menubar)
+		winmenu = tkinter.Menu(menubar)
+		cmdmenu = tkinter.Menu(menubar)
 		
 		filemenu.add_command(label='Отчет', command=self.onExit)
 		filemenu.add_command(label='Выход', command=self.onExit)
@@ -91,7 +93,7 @@ class MainApp():
 		
 		#self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
 		#self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
-		self.updateLogMsg('Программа для управления САУ в1.1\n')
+		self.updateLogMsg('Программа управления САУ в1.1\n')
 		self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
 		
 	def onCheck(self):
@@ -119,10 +121,12 @@ class MainApp():
 		self.parent.destroy()
 		
 	def updateLogMsg(self, msg):
-		self.logmsg.append(msg)
-		if len(self.logmsg) > 4:
+			
+		self.logmsg.append(datetime.now().strftime("%d.%m.%y %H:%M:%S ") + msg)
+		if len(self.logmsg) > 24:
 			self.logmsg.pop(0)
 		
 		self.textbox.delete('1.0', 'end')
 		for s in self.logmsg:
 			self.textbox.insert(tkinter.INSERT, s)
+			
