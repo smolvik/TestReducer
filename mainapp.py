@@ -93,11 +93,12 @@ class MainApp():
 		
 		#self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
 		#self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
-		self.updateLogMsg('Программа управления САУ в1.1\n')
-		self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
+		self.updateLogMsg('Программа управления САУ в1.1 md5sum={}\n'.format(hashobj.hexdigest()))
+		#self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
 		
 	def onCheck(self):
-		self.updateLogMsg(open('man.txt', 'rt').read())
+		#self.updateLogMsg(open('man.txt', 'rt').read())
+		self.updateLogMsg('Item under construction\n')
 		
 	def cycloconfigUp(self):
 		self.cycloconfigWnd.deiconify()

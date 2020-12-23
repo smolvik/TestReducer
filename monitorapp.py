@@ -22,7 +22,7 @@ class MonitorApp(DialogApp):
 
 
 	def initUI(self):
-		lblst = ['Обороты, об.', 'Крутящий момент, Н*м', 'Скорость вращения, об/мин']
+		lblst = ['Обороты, об.', 'Крутящий момент, Н*м', 'Частота вращения, об/мин']
 		f1 = tkinter.LabelFrame(self.parent, text='Входной вал')
 		f2 = tkinter.LabelFrame(self.parent, text = 'Выходной вал')
 		f3 = tkinter.Frame(self.parent)

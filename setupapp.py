@@ -13,7 +13,8 @@ class SetupApp(DialogApp):
 	class CmdEnum(IntEnum):
 		STOP=0
 		START=1
-		EXIT=2
+		PAUSE=2
+		EXIT=3
 	
 	timerFlag = {'mode':1}
 	
@@ -44,7 +45,7 @@ class SetupApp(DialogApp):
 
 	def initUI(self):
 		
-		parlst = ['Наименование профиля', 'Скорость вращения входного вала, об/мин', 'Передаточное отношение механизма', 
+		parlst = ['Наименование профиля', 'Частота вращения входного вала, об/мин', 'Передаточное отношение механизма', 
 		'Полный рабочий ход входного вала, об', 'Максимальный тормозной крутящий момент на выходном валу, Н*м',
 		'Циклограмма']
 		
@@ -83,14 +84,15 @@ class SetupApp(DialogApp):
 		tkinter.Label(frametst, text='Частота сохранения результатов').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
 		self.cboxSaveMode = ttk.Combobox(frametst, width=40, values=svlst, state='readonly')
 		self.cboxSaveMode.grid(row=1, column=1, padx=5, pady=5, sticky=tkinter.E)
-				
+
 		self.startBut = tkinter.Button(framebut, text = 'Запуск', state=tkinter.DISABLED, width = 10, command = self.startproc)
 		self.startBut.grid(row=0, column=1, padx=5, pady=5)
-		tkinter.Button(framebut, text = 'Остановка', width = 10, command = self.stopproc).grid(row=0, column=2, padx=5, pady=5)
-		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=3, padx=5, pady=5)
-		
+		tkinter.Button(framebut, text = 'Пауза', width = 10, command = self.pauseproc).grid(row=0, column=2, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Стоп', width = 10, command = self.stopproc).grid(row=0, column=3, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=4, padx=5, pady=5)
+
 	def validateNumCycl(self, what):
-		print('num cycl validation')
+		#print('num cycl validation')
 
 		try:
 			ncyc = int(what)
@@ -98,8 +100,10 @@ class SetupApp(DialogApp):
 			return False
 			
 		if ncyc > 108000 or ncyc < 1:
+			print('num cycl validation fault')
 			return False
 		else:
+			print('num cycl validation ОК')
 			return True
 
 		
@@ -113,6 +117,11 @@ class SetupApp(DialogApp):
 				
 		print(lst)
 		self.cboxProf['values'] = lst
+		
+	def pauseproc(self):
+		print('pause proc')
+		self.cmdParam['cmd'] = self.CmdEnum.PAUSE
+		self.cmdQueue.append(self.cmdParam)
 		
 	def stopproc(self):
 		print('stop proc')
