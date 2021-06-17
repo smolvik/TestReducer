@@ -11,12 +11,11 @@ from enum import IntEnum
 class SetupApp(DialogApp):
 	
 	class CmdEnum(IntEnum):
-		STOP=0
 		START=1
 		PAUSE=2
-		EXIT=3
-	
-	timerFlag = {'mode':1}
+		STOP=3
+		ALIVE=4
+		EXIT=5
 	
 	def __init__(self, parent, title, prc):
 		print('OscillApp')
@@ -172,7 +171,7 @@ class SetupApp(DialogApp):
 
 		# data is sorted by the first element
 		cyc = sorted(list(zip(lst[6:11], lst[11:16])), key=lambda l: l[0])
-		print(cyc)
+		print("*************cyc={}".format(cyc))
 		
 		self.cmdParam['speed_in'] = lst[1]
 		self.cmdParam['rd_ratio'] = lst[2]

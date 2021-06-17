@@ -14,12 +14,14 @@ import math
 
 mainApp = 0
 
-servIP = '127.0.0.1'
-servPort = 48801
+servIP = '10.1.0.1'
+cliIP = '10.1.0.2'
 
-cliIP = '127.0.0.1'
-cliPort = 48801
+fsmPort = 48801
+cntPort = 48802
+tlmPort = 48803
 
+'''
 def timerLoop(args):
 	global bufTorIn
 	global mainApp
@@ -127,28 +129,97 @@ def timerLoop(args):
 	updateFSM = idleProc
 	cyclogen = None
 	
-	# create datagram socket
-	udpsock = socket.socket(family = socket.AF_INET, type = socket.SOCK_DGRAM)
-	# bind socket to port
-	udpsock.bind(('', cliPort))
-	# connect udp to remote address
-	udpsock.connect((servIP, servPort))
-
 	while True:
+
 		time.sleep(.1)
-		#readable, writable, exceptional = select.select([udpsock], [], [], 0.1)
 
 		cmd = {}
 		
 		if mainApp.setupApp.cmdQueue:
 			cmd = mainApp.setupApp.cmdQueue.pop(0)
 			
-		if cmd.get('cmd') == mainApp.setupApp.CmdEnum.EXIT:
-			return
-		
+			if cmd.get('cmd') == mainApp.setupApp.CmdEnum.EXIT:
+				return
+
 		monpar = updateFSM(cmd)
 		if monpar:
 			mainApp.monitorApp.update(monpar)
+'''
+
+def msgLoop(args):
+
+	def cmd2msg(cmd):
+		cmdid = cmd.get('cmd')
+		msg = cmdid.to_bytes(2,'little')
+		
+		if cmdid == mainApp.setupApp.CmdEnum.START:
+			msg = msg+cmd.get('numcyc').to_bytes(4,'little')
+
+			y=cmd.get('speed_in')
+			msg = msg+int(y*(2**8) + 0.5).to_bytes(4,'little')
+			msg = msg+cmd.get('numrot_in').to_bytes(4,'little')
+			
+			y = cmd.get('max_torque_out')
+			msg = msg+int(y*(2**8) + 0.5).to_bytes(4,'little')
+			
+			cyc = cmd.get('cyclo')
+			msg = msg+bytearray([i for i,j in cyc])
+			msg = msg+bytearray([j for i,j in cyc])
+
+		return msg
+
+	def msg2mon(msg):
+		
+		mon = [msg[0]]
+		mon.append(msg[1])
+		mon.append(int.from_bytes(msg[2:6], 'little')) 				# number of rotates at input
+		mon.append(int.from_bytes(msg[6:10], 'little')*(2**-8))		# input torque
+		mon.append(int.from_bytes(msg[10:14], 'little')*(2**-8))		# input speed
+		mon.append(int.from_bytes(msg[14:18], 'little')) 			# number of rotates at output
+		mon.append(int.from_bytes(msg[18:22], 'little')*(2**-8))	# output torque
+		mon.append(int.from_bytes(msg[22:26], 'little')*(2**-8))	# output speed
+		#ts = int.from_bytes(msg[28:32], 'little')		# time stamp
+		#crc = int.from_bytes(msg[32:34], 'little')		
+		
+		print(mon)
+		return mon
+	
+	# create datagram socket
+	fsmSock = socket.socket(family = socket.AF_INET, type = socket.SOCK_DGRAM)
+	# bind socket to port
+	#fsmSock.bind((cliIP, fsmPort))
+	# connect to remote address
+	#fsmSock.connect((servIP, fsmPort))
+	
+	tlmSock = socket.socket(family = socket.AF_INET, type = socket.SOCK_DGRAM)
+	tlmSock.bind((cliIP, tlmPort))
+	##tlmSock.connect((servIP, tlmPort))
+
+	while True:
+		
+		#time.sleep(.1)
+		readable, writable, exceptional = select.select([tlmSock], [], [], 0.1)
+		for s in readable:
+			if s == tlmSock:
+				msg = s.recv(1024)
+				monpar = msg2mon(msg)
+				print(monpar)
+				if monpar:
+					curtor = monpar[3]
+					speed = monpar[4]
+					mainApp.monitorApp.update(monpar)
+					mainApp.oscillApp1.updateBuf(-curtor, 0.1*curtor+speed)
+					mainApp.oscillApp2.updateBuf(curtor, -0.1*curtor-speed)
+
+		cmd = {}
+		if mainApp.setupApp.cmdQueue:
+			cmd = mainApp.setupApp.cmdQueue.pop(0)
+			lastcmd = cmd
+			
+			if cmd.get('cmd') == mainApp.setupApp.CmdEnum.EXIT:
+				return
+			
+			fsmSock.sendto(cmd2msg(cmd), (servIP, fsmPort))
 
 def main():
 	global bufTorIn
@@ -157,7 +228,7 @@ def main():
 	root = tkinter.Tk()	
 	mainApp = MainApp(root)
 	
-	thrTimer = threading.Thread(target=timerLoop, args=(mainApp.setupApp.timerFlag,), daemon=True)
+	thrTimer = threading.Thread(target=msgLoop, args=(1,), daemon=True)
 	thrTimer.start()
 	#threading.get_ident()
 	
