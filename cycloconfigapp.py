@@ -16,6 +16,8 @@ class CycloConfigApp(DialogApp):
 		for i in range(5):
 			self.param1.append(tkinter.IntVar())
 			self.param2.append(tkinter.IntVar())
+		self.param1[0].set(0);
+		self.param1[4].set(100);
 					
 		self.currprofName = tkinter.StringVar()
 		self.cycloName = tkinter.StringVar()
@@ -37,8 +39,12 @@ class CycloConfigApp(DialogApp):
 		
 		tkinter.Label(framepar, text='Рабочий ход входного вала %').grid(row=1, column=0, padx=5, pady=5, sticky=tkinter.W)
 		tkinter.Label(framepar, text='Тормозной крутящий момент %').grid(row=2, column=0, padx=5, pady=5, sticky=tkinter.W)
-		for i in range(len(self.param1)):
-			tkinter.Entry(framepar, width=4, textvariable = self.param1[i], validate='all', validatecommand = (framepar.register(self.percValidate), '%P')).grid(row=1, column=i+1, padx=5, pady=5, sticky=tkinter.W)
+		nprm = len(self.param1)
+		for i in range(nprm):
+			if i == 0 or i == nprm-1:
+				tkinter.Entry(framepar, width=4, textvariable = self.param1[i], state=tkinter.DISABLED).grid(row=1, column=i+1, padx=5, pady=5, sticky=tkinter.W)
+			else:
+				tkinter.Entry(framepar, width=4, textvariable = self.param1[i], validate='all', validatecommand = (framepar.register(self.percValidate), '%P')).grid(row=1, column=i+1, padx=5, pady=5, sticky=tkinter.W)
 			tkinter.Entry(framepar, width=4, textvariable = self.param2[i], validate='all', validatecommand = (framepar.register(self.percValidate), '%P')).grid(row=2, column=i+1, padx=5, pady=5, sticky=tkinter.W)
 		
 		tkinter.Button(framepar, text = 'Сохранить', width = 10, command = self.saveprofile).grid(row=3, column=0, padx=5, pady=5, sticky=tkinter.W)
@@ -161,6 +167,10 @@ class CycloConfigApp(DialogApp):
 			conn.close()
 			self.cboxProf.set('')
 	
+	def percValidateRO(self, what):
+		print('percent RO')
+		return False
+		
 	def percValidate(self, what):
 		print('percent validation')
 
@@ -173,4 +183,3 @@ class CycloConfigApp(DialogApp):
 			return False
 		else:
 			return True
-

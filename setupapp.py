@@ -20,9 +20,11 @@ class SetupApp(DialogApp):
 	def __init__(self, parent, title, prc):
 		print('OscillApp')
 		
+		
 		self.cmdParam={}
 		
 		self.cmdQueue = []
+		self.cmdCondition = threading.Condition()
 		
 		self.param = []
 		self.param.append(tkinter.StringVar())
@@ -120,12 +122,18 @@ class SetupApp(DialogApp):
 	def pauseproc(self):
 		print('pause proc')
 		self.cmdParam['cmd'] = self.CmdEnum.PAUSE
-		self.cmdQueue.append(self.cmdParam)
+		
+		with self.cmdCondition:
+			self.cmdQueue.append(self.cmdParam)
+			self.cmdCondition.notifyAll()
 		
 	def stopproc(self):
 		print('stop proc')
 		self.cmdParam['cmd'] = self.CmdEnum.STOP
-		self.cmdQueue.append(self.cmdParam)
+		
+		with self.cmdCondition:
+			self.cmdQueue.append(self.cmdParam)
+			self.cmdCondition.notifyAll()		
 		
 	def startproc(self):
 		print('start proc')
@@ -134,7 +142,9 @@ class SetupApp(DialogApp):
 		self.cmdParam['cmd'] = self.CmdEnum.START
 		print(self.cmdParam)
 		
-		self.cmdQueue.append(self.cmdParam)
+		with self.cmdCondition:
+			self.cmdQueue.append(self.cmdParam)
+			self.cmdCondition.notifyAll()
 		
 	def update(self, perc):
 		if perc == 100:
@@ -165,7 +175,7 @@ class SetupApp(DialogApp):
 			conn.close()
 			return
 		else:
-			self.logProc('Запись успешно загружена\n')
+			self.logProc('Запись успешно загружена из базы данных\n')
 			self.startBut['state'] = tkinter.NORMAL
 			conn.close()
 

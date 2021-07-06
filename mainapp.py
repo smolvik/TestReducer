@@ -118,7 +118,7 @@ class MainApp():
 	def oscillUp2(self):
 		self.oscillWnd2.deiconify()		
 		
-	def onExit(self):			
+	def onExit(self):		
 		self.parent.destroy()
 		
 	def updateLogMsg(self, msg):
