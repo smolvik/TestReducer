@@ -12,71 +12,64 @@ import select
 import socket
 import math
 from modbus_udp import ModbusUdpClient
+import lzma
+import struct
 
 #mainApp = 0
 
 def msgLoop(args):
 
-	def updateSpd(ts, nr):
-		if ts:
-			if updateSpd.ncurSpd >= updateSpd.nmaxSpd:
-				# remove old data
-				updateSpd.bufT.pop(0)
-				updateSpd.bufC.pop(0)
-			else:
-				updateSpd.ncurSpd += 1
-			
-			# add new one
-			updateSpd.bufT.append(ts)
-			updateSpd.bufC.append(nr)
-			
-			dc = updateSpd.bufC[-1] - updateSpd.bufC[0]
-			dt = updateSpd.bufT[-1] - updateSpd.bufT[0]
-			if dt:
-				updateSpd.spd = 1000*60*dc/dt
-
-		return updateSpd.spd
-
-	updateSpd.bufT = []
-	updateSpd.bufC = []
-	updateSpd.ncurSpd=0
-	updateSpd.nmaxSpd=20
-	updateSpd.spd=0
+	def uns2sig(x):
+		if x > 0x7fffffff:
+			 x = x - 4294967296
+		return x
 
 	def msg2mon(msg,cmd):
-			
+		
+		fsmlst = ['Ожидание запуска...', 'Выполнение цикла...', 'Завершение цикла...', 'Ожидание продолжения...', 'Сброс счетчика...']
+		
+		fsmmode = 0
 		mon = []
+		tlmb = b''
 		if len(msg) >= 16:
+			
+			rot1 = uns2sig(msg[0]*(2**16) + msg[1])
+			tor1 = uns2sig(msg[2]*(2**16) + msg[3])*(2**-8)
+			spd1 = uns2sig(msg[4]*(2**16) + msg[5])*(2**-8)
+			rot2 = uns2sig(msg[6]*(2**16) + msg[7])
+			tor2 = uns2sig(msg[8]*(2**16) + msg[9])*(2**-8)
+			spd2 = uns2sig(msg[10]*(2**16) + msg[11])*(2**-8)
+			
+			tlmb = struct.pack('iffiff', rot1, tor1, spd1, rot2, tor2, spd2)
+			
 			mon = [0,0]
-			mon.append( msg[0]*(2**16) + msg[1] )					# number of rotates at input
-			mon.append( (msg[2]*(2**16) + msg[3])*(2**-8) )			# input torque
-			mon.append( (msg[4]*(2**16) + msg[5])*(2**-8) )			# input speed rpm from rps
-			mon.append( msg[6]*(2**16) + msg[7] )					# number of rotates at output
-			mon.append( (msg[8]*(2**16) + msg[9])*(2**-8) )			# output torque
-			mon.append( (msg[10]*(2**16) + msg[11])*(2**-8) )		# output speed rpm from rps
+			mon.append( rot1 )								# number of rotates at input
+			mon.append( tor1 )								# input torque
+			mon.append( spd1 )								# input speed rpm from rps
+			mon.append( rot2 )								# number of rotates at output		
+			mon.append( tor2 )								# output torque
+			mon.append( spd2 )								# output speed rpm from rps
+
+			fsmmode = msg[15]
+			if msg[15] < 5:
+				mon.append( fsmlst[msg[15]] )						# fsm mode
+			else:
+				mon.append('')
 			
 			if cmd:				
 				numcyc = cmd.get('numcyc')
-				cyccnt = msg[12]*(2**16) + msg[13] 						# cyc counter
-				ts = msg[14]*(2**16) + msg[15]							# time stamp
+				cyccnt = msg[12]*(2**16) + msg[13] 					# cyc counter
 				
-				nrot = mon[2]
-				
-				# ~ if cyccnt:
-					# ~ spd=updateSpd(ts,nrot)
-				# ~ else: 
-					# ~ spd = 0
-				# ~ print("time stamp:{}".format(ts))
-				# ~ print("speed:{}".format(spd))
-				# ~ mon[4] = spd
-				
-				rot = msg[0]*(2**16) + msg[1]
+				rot = abs(mon[2])
 				maxrot = cmd.get('numrot_in')
 				
-				mon[0] = min(100,100*(numcyc-cyccnt)/numcyc)
-				mon[1] = min(100,100*rot/maxrot)
+				mon[0] = min(100,100*(numcyc-cyccnt)/numcyc)		# percentage of test progress
+				mon[1] = min(100,100*rot/maxrot)					# percentage of current cycle progress
 		
-		return mon
+		fact = 0
+		if fsmmode == 1 or fsmmode == 2:
+			fact = 1
+		return fact,mon,tlmb
 
 	def cmd2msg(cmd):
 		
@@ -99,6 +92,11 @@ def msgLoop(args):
 	modbusClient = ModbusUdpClient('10.0.0.1', 4660, 17)
 	curCmd = {}
 
+	tlmFileName = 'tlm.xz'	
+	tlmFd = open(tlmFileName, mode='wb')
+	tlmFd.close()
+	lzc = lzma.LZMACompressor()
+
 	while True:
 		
 		cmd = {}
@@ -106,7 +104,7 @@ def msgLoop(args):
 			tmo = mainApp.setupApp.cmdCondition.wait(timeout=0.5)
 			if mainApp.setupApp.cmdQueue:
 				cmd = mainApp.setupApp.cmdQueue.pop(0)
-				print("get the command from queue {}".format(cmd['cmd']))				
+				print("get the command from queue {}".format(cmd['cmd']))
 		
 		if not tmo:
 			print("condition timeout occurs")
@@ -142,11 +140,23 @@ def msgLoop(args):
 				return
 		elif regs:
 			#print(regs)
+			
+			tlmBuffer = b''
 			i = 0
 			while True:
-				monpar = msg2mon(regs[i:],curCmd)
+				fact,monpar,tlmchunk = msg2mon(regs[i:],curCmd)
 				if monpar:
 					#print(monpar)
+					if fact:
+						if tlmFd.closed:
+							mainApp.updateLogMsg('Испытание запущено\n')
+							tlmFd = open(tlmFileName, 'wb')
+						tlmBuffer += tlmchunk
+					else:
+						if not tlmFd.closed:
+							mainApp.updateLogMsg('Испытание завершено\n')
+							tlmFd.write(lzc.flush())
+							tlmFd.close()
 					try:
 						mainApp.monitorApp.update(monpar)
 						mainApp.oscillApp1.updateBuf(monpar[3], monpar[4])
@@ -156,6 +166,10 @@ def msgLoop(args):
 				else:
 					break;
 				i += 16
+			
+			# if tlm file is ready to be writen and there is data in buffer
+			if (not tlmFd.closed) and len(tlmBuffer):
+				tlmFd.write(lzc.compress(tlmBuffer))
 
 def main():
 	global bufTorIn

@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
 import tkinter
 from tkinter import ttk
 
@@ -12,7 +11,7 @@ class MonitorApp(DialogApp):
 		print('OscillApp')
 		
 		self.param = []
-		for i in range(8):
+		for i in range(9):
 			if i == 3 or i == 6:
 				self.param.append(tkinter.DoubleVar())
 			else:
@@ -39,7 +38,8 @@ class MonitorApp(DialogApp):
 		
 		ttk.Progressbar(self.parent, value = 0, orient = tkinter.HORIZONTAL, length = 600, mode = 'determinate', variable = self.param[0]).grid(row=1, column=0, padx=5, pady=5, columnspan=2)
 		ttk.Progressbar(self.parent, value = 0, orient = tkinter.HORIZONTAL, length = 600, mode = 'determinate', variable = self.param[1]).grid(row=2, column=0, padx=5, pady=5, columnspan=2)
-		tkinter.Button(self.parent, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=3, column=0, padx=5, pady=5, columnspan=2)
+		tkinter.Label(self.parent, textvariable = self.param[8]).grid(row=3, column=0, padx=5, pady=5, sticky=tkinter.W)
+		tkinter.Button(self.parent, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=4, column=0, padx=5, pady=5, columnspan=2)
 
 	def update(self, par):
 		#self.progress['value'] = par[0]

@@ -10,6 +10,8 @@ from cycloconfigapp import CycloConfigApp
 import hashlib
 import os
 from datetime import datetime
+import struct
+import lzma
 
 class MainApp():
 	def __init__(self, parent):
@@ -64,7 +66,7 @@ class MainApp():
 		winmenu = tkinter.Menu(menubar)
 		cmdmenu = tkinter.Menu(menubar)
 		
-		filemenu.add_command(label='Отчет', command=self.onExit)
+		filemenu.add_command(label='Отчет', command=self.onReport)
 		filemenu.add_command(label='Выход', command=self.onExit)
 		
 		winmenu.add_command(label='Редактор циклограмм', command=self.cycloconfigUp)
@@ -80,6 +82,25 @@ class MainApp():
 		menubar.add_cascade(label="Файл", menu=filemenu)
 		menubar.add_cascade(label="Команды", menu=cmdmenu)
 		menubar.add_cascade(label="Окна", menu=winmenu)
+
+	def onReport(self):
+		lzd = lzma.LZMADecompressor()
+		fz = open("tlm.xz", 'rb')
+		dd = b''
+
+		chunksz = 6
+		bufsz=1024
+		while not lzd.eof:
+			cd = b''
+			if lzd.needs_input:
+				cd = fz.read(bufsz)
+
+			dd += lzd.decompress(cd, 4*chunksz)
+			if not lzd.needs_input:
+				while int(len(dd)/4) >= chunksz:
+					print(struct.unpack('iffiff', dd[:chunksz*4]))
+					dd = dd[chunksz*4:]
+		fz.close()
 
 	def onAbout(self):
 		
