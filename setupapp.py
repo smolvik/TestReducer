@@ -7,6 +7,11 @@ import sqlite3
 from dialogapp import DialogApp
 import threading
 from enum import IntEnum
+import struct
+import lzma
+import xlsxwriter
+import threading
+import time
 
 class SetupApp(DialogApp):
 	
@@ -90,7 +95,161 @@ class SetupApp(DialogApp):
 		self.startBut.grid(row=0, column=1, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Пауза', width = 10, command = self.pauseproc).grid(row=0, column=2, padx=5, pady=5)
 		tkinter.Button(framebut, text = 'Стоп', width = 10, command = self.stopproc).grid(row=0, column=3, padx=5, pady=5)
-		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=4, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Отчет', width = 10, command = self.reportproc).grid(row=0, column=4, padx=5, pady=5)
+		tkinter.Button(framebut, text = 'Выход', width = 10, command = self.parent.withdraw).grid(row=0, column=5, padx=5, pady=5)
+		
+		self.reportThr = None
+
+	def reportproc(self):
+		def titlesheet(workbook, par, cyc):
+			titform = workbook.add_format()
+			#titform.set_font_size(12)
+			titform.set_bold()
+			
+			headform = workbook.add_format()
+			headform.set_text_wrap()
+			headform.set_align('top')
+
+			#headform.set_bg_color('gray');
+			
+			heading = ['Частота вращения входного вала, об/мин', 'Передаточное отношение механизма',
+				'Полный рабочий ход входного вала, об', 'Максимальный тормозной крутящий момент на выходном валу, Н*м',
+				'Кол-во циклов']
+			parlst = [par['speed_in'], par['rd_ratio'], par['numrot_in'], par['max_torque_out'], self.numCycles.get()]
+				
+			worksheet = workbook.add_worksheet('Title')
+			
+			worksheet.merge_range('A1:D1','Отчет об испытании', titform)
+			worksheet.merge_range('A2:D2',time.strftime('%d.%m.%y %H:%M:%S', time.localtime()), titform)
+			
+			worksheet.merge_range('A4:E4','Параметры испытания', 0)
+			worksheet.write_row(4, 0, heading, headform)
+			worksheet.write_row(5, 0, parlst, 0)
+			
+			worksheet.merge_range('A8:F8','Циклограмма', 0)
+			worksheet.write_column(8, 0, ('Обороты', 'Момент'))
+			i=1
+			for itm in par['cyclo']:
+				worksheet.write_column(8, i, itm)
+				i+=1
+			#worksheet.write_row(6, 0, par['cyclo'], 0)
+			
+			print(par['cyclo'])
+
+		def newsheet(workbook, buf, cnt):
+			nd = len(buf)
+			if nd:
+				headform = workbook.add_format()
+				headform.set_text_wrap();
+				headform.set_align('top');
+				
+				shnm = 'Cycle{}'.format(cnt)
+				# create new worksheet for cycle
+				worksheet = workbook.add_worksheet(shnm)
+				# Add the worksheet data
+				heading=['Обороты вх. вала', 'Момент на вх. валу Н*м', 'Частота вращения вх. вала об./мин', 
+					'Момент на вых. валу Н*м', 'Частота вращения вых. вала об./мин']
+			
+				worksheet.write_row(0, 0, heading, headform)
+				worksheet.write_column(1, 0, [i1 for i1,i2,i3,i4,i5 in buf])
+				worksheet.write_column(1, 1, [i2 for i1,i2,i3,i4,i5 in buf])
+				worksheet.write_column(1, 2, [i3 for i1,i2,i3,i4,i5 in buf])
+				worksheet.write_column(1, 3, [i4 for i1,i2,i3,i4,i5 in buf])
+				worksheet.write_column(1, 4, [i5 for i1,i2,i3,i4,i5 in buf])
+
+				# Create a new chart object.
+				chart1 = workbook.add_chart({'type': 'line'})
+				# Add a chart title and some axis labels.
+				chart1.set_title ({'name': 'Частота вращения вала'})
+				chart1.set_x_axis({'name': 'Обороты'})
+				chart1.set_y_axis({'name': 'Частота вращения вала, об/мин'})
+				# Add a series to the chart.
+				# [sheetname, first_row, first_col, last_row, last_col]
+				chart1.add_series(
+					{'name': [shnm, 0, 2],
+					'values': [shnm,1,2,nd+1,2],
+					'categories': [shnm, 1,0,nd+1,0]}
+				) 
+				chart1.add_series(
+					{'name': [shnm, 0, 4],
+					'values': [shnm,1,4,nd+1,4],
+					'categories': [shnm, 1,0,nd+1,0]}
+				) 				
+				
+				# Create a new chart object.
+				chart2 = workbook.add_chart({'type': 'line'})
+				# Add a chart title and some axis labels.
+				chart2.set_title ({'name': 'Момент на валу'})
+				chart2.set_x_axis({'name': 'Обороты'})
+				chart2.set_y_axis({'name': 'Момент на валу, Н*м'})
+				# Add a series to the chart.
+				# [sheetname, first_row, first_col, last_row, last_col]
+				chart2.add_series(
+					{'name': [shnm, 0, 1],
+					'values': [shnm,1,1,nd+1,1],
+					'categories': [shnm, 1,0,nd+1,0]}
+				) 
+				chart2.add_series(
+					{'name': [shnm, 0, 3],
+					'values': [shnm,1,3,nd+1,3],
+					'categories': [shnm, 1,0,nd+1,0]}
+				) 								
+				
+				# Insert the chart into the worksheet.
+				worksheet.insert_chart('J1', chart1)
+				worksheet.insert_chart('J20', chart2)
+		
+		def reportloop(svdec):
+			self.logProc('Формирование отчета...\n')
+				
+			lzd = lzma.LZMADecompressor()
+			fz = open("tlm.xz", 'rb')
+			dd = b''
+			
+			workbook = xlsxwriter.Workbook('report.xlsx')
+			
+			titlesheet(workbook, self.cmdParam, 0)
+
+			chunksz = 6
+			bufsz=1024
+			cycCnt = 0
+			cycBuf = []
+			while not lzd.eof:
+				cd = b''
+				if lzd.needs_input:
+					cd = fz.read(bufsz)
+
+				dd += lzd.decompress(cd, 4*chunksz)
+				if not lzd.needs_input:
+					while int(len(dd)/4) >= chunksz:
+						chunk = struct.unpack('iiffff', dd[:chunksz*4])
+						dd = dd[chunksz*4:]
+						#print(chunk)
+
+						if cycCnt == chunk[0]:
+							cycBuf.append(chunk[1:])
+						else:
+							# data of the new cycle begin here
+							if (cycCnt==1) or (cycCnt%svdec == 0):
+								newsheet(workbook, cycBuf, cycCnt)
+							cycCnt = chunk[0]
+							cycBuf = [chunk[1:],]
+			fz.close()
+			newsheet(workbook, cycBuf, cycCnt)
+			workbook.close()
+			self.logProc('Отчет готов\n')
+		
+		svmod = self.cboxSaveMode.current()
+		if svmod < 0:
+			self.logProc('Ошибка. Не выбран режим сохранения результатов\n')
+			return
+		svdec = 10**svmod
+		
+		if (None==self.reportThr) or (not self.reportThr.isAlive()):
+			self.reportThr = threading.Thread(target=reportloop, args=(svdec,), daemon=True)
+			self.reportThr.start()
+		else:
+			self.logProc('Ошибка. Формирование отчета не закончено\n')
 
 	def validateNumCycl(self, what):
 		#print('num cycl validation')

@@ -39,24 +39,22 @@ def msgLoop(args):
 			rot2 = uns2sig(msg[6]*(2**16) + msg[7])
 			tor2 = uns2sig(msg[8]*(2**16) + msg[9])*(2**-8)
 			spd2 = uns2sig(msg[10]*(2**16) + msg[11])*(2**-8)
-			
-			tlmb = struct.pack('iffiff', rot1, tor1, spd1, rot2, tor2, spd2)
-			
+
 			mon = [0,0]
-			mon.append( rot1 )								# number of rotates at input
-			mon.append( tor1 )								# input torque
-			mon.append( spd1 )								# input speed rpm from rps
-			mon.append( rot2 )								# number of rotates at output		
-			mon.append( tor2 )								# output torque
-			mon.append( spd2 )								# output speed rpm from rps
+			mon.append( rot1 )										# number of rotates at input
+			mon.append( tor1 )										# input torque
+			mon.append( spd1 )										# input speed rpm from rps
+			mon.append( rot2 )										# number of rotates at output
+			mon.append( tor2 )										# output torque
+			mon.append( spd2 )										# output speed rpm from rps
 
 			fsmmode = msg[15]
 			if msg[15] < 5:
 				mon.append( fsmlst[msg[15]] )						# fsm mode
 			else:
 				mon.append('')
-			
-			if cmd:				
+
+			if cmd:
 				numcyc = cmd.get('numcyc')
 				cyccnt = msg[12]*(2**16) + msg[13] 					# cyc counter
 				
@@ -65,6 +63,8 @@ def msgLoop(args):
 				
 				mon[0] = min(100,100*(numcyc-cyccnt)/numcyc)		# percentage of test progress
 				mon[1] = min(100,100*rot/maxrot)					# percentage of current cycle progress
+				
+				tlmb = struct.pack('iiffff', numcyc-cyccnt+1, rot1, tor1, spd1, tor2, spd2)
 		
 		fact = 0
 		if fsmmode == 1 or fsmmode == 2:
@@ -93,8 +93,10 @@ def msgLoop(args):
 	curCmd = {}
 
 	tlmFileName = 'tlm.xz'	
-	tlmFd = open(tlmFileName, mode='wb')
-	tlmFd.close()
+	#tlmFd = open(tlmFileName, mode='wb')
+	#tlmFd.close()
+	tlmFd = None
+	
 	lzc = lzma.LZMACompressor()
 
 	while True:
@@ -148,14 +150,17 @@ def msgLoop(args):
 				if monpar:
 					#print(monpar)
 					if fact:
-						if tlmFd.closed:
+						if (not tlmFd) or tlmFd.closed:
 							mainApp.updateLogMsg('Испытание запущено\n')
 							tlmFd = open(tlmFileName, 'wb')
+							lzc = lzma.LZMACompressor()
 						tlmBuffer += tlmchunk
 					else:
-						if not tlmFd.closed:
+						if tlmFd and (not tlmFd.closed):
 							mainApp.updateLogMsg('Испытание завершено\n')
+							tlmFd.write(lzc.compress(tlmBuffer))
 							tlmFd.write(lzc.flush())
+							tlmBuffer = b''
 							tlmFd.close()
 					try:
 						mainApp.monitorApp.update(monpar)
@@ -164,12 +169,13 @@ def msgLoop(args):
 					except RuntimeError:
 						pass
 				else:
+					# if tlm file is ready to be writen and there is data in buffer
+					if tlmFd and (not tlmFd.closed) and len(tlmBuffer):
+						print(len(tlmBuffer))
+						print(tlmFd.closed)
+						tlmFd.write(lzc.compress(tlmBuffer))
 					break;
 				i += 16
-			
-			# if tlm file is ready to be writen and there is data in buffer
-			if (not tlmFd.closed) and len(tlmBuffer):
-				tlmFd.write(lzc.compress(tlmBuffer))
 
 def main():
 	global bufTorIn
