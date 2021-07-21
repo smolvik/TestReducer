@@ -119,7 +119,7 @@ class ModbusUdpClient:
 		if pdu:
 			if pdu[0] & 0x80:
 				print('modbus error: {}'.format(pdu[1]))
-			else:
+			elif (len(pdu)>5) and (pdu[0] == 0x18):
 				fres = True
 				nmsg = struct.unpack('>HH', pdu[1:5])
 				nreg = nmsg[1]
