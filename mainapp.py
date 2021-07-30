@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import tkinter
+from optionsapp import OptionsApp
 from oscillapp import OscillApp
 from setupapp import SetupApp
 from monitorapp import MonitorApp
@@ -13,12 +14,16 @@ from datetime import datetime
 import struct
 import lzma
 import xlsxwriter
+import threading
 
 class MainApp():
 	def __init__(self, parent):
 		self.parent = parent
 		
 		self.initUI()
+		
+		self.cmdQueue = []
+		self.cmdCondition = threading.Condition()		
 		
 		self.logmsg = []
 		
@@ -32,7 +37,8 @@ class MainApp():
 		
 		self.setupWnd = tkinter.Toplevel(parent)
 		#self.setupWnd.transient(parent) # window always at the foreground
-		self.setupApp = SetupApp(self.setupWnd, "Панель управления", self.updateLogMsg)
+		self.setupApp = SetupApp(self.setupWnd, "Панель управления", self.updateLogMsg,
+			self.cmdCondition, self.cmdQueue)
 		
 		self.monitorWnd = tkinter.Toplevel(parent)
 		#self.monitorWnd.transient(parent) # window always at the foreground
@@ -45,6 +51,10 @@ class MainApp():
 		self.cycloconfigWnd = tkinter.Toplevel(parent)
 		#self.cycloconfigWnd.transient(parent) # window always at the foreground
 		self.cycloconfigApp = CycloConfigApp(self.cycloconfigWnd, "Редактор профилей циклограммы", self.updateLogMsg)
+		
+		self.optionsWnd = tkinter.Toplevel(parent)
+		self.optionsApp = OptionsApp(self.optionsWnd, "Панель настроек", self.updateLogMsg, 
+				self.cmdCondition, self.cmdQueue)
 		
 	def initUI(self):
 		self.parent.title('Программа управления стендом тестирования редукторов')
@@ -75,6 +85,7 @@ class MainApp():
 		winmenu.add_command(label='Панель индикации', command=self.monitorUp)
 		winmenu.add_command(label='Панель осциллографа канал 1', command=self.oscillUp1)
 		winmenu.add_command(label='Панель осциллографа канал 2', command=self.oscillUp2)
+		winmenu.add_command(label='Панель настроек', command=self.optionsUp)
 		
 		cmdmenu.add_command(label='О программе', command=self.onAbout)
 		cmdmenu.add_command(label='Проверка готовности', command=self.onCheck)
@@ -91,16 +102,18 @@ class MainApp():
 		for fn in fllst:
 			if fn[-2:] == 'py':
 				#print(fn)
-				hashobj.update(open(fn, "rb").read())		
+				hashobj.update(open(fn, "rb").read())
 		
 		#self.textbox.insert(tkinter.INSERT, '****************\nПрограмма для управления САУ в1.1\n')
 		#self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
 		self.updateLogMsg('Программа управления САУ в1.1 md5sum={}\n'.format(hashobj.hexdigest()))
 		#self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
-		
+
 	def onCheck(self):
+		pass
 		#self.updateLogMsg(open('man.txt', 'rt').read())
-		self.updateLogMsg('Item under construction\n')
+		#self.updateLogMsg('Item under construction\n')
+
 		
 	def cycloconfigUp(self):
 		self.cycloconfigWnd.deiconify()
@@ -110,6 +123,9 @@ class MainApp():
 		
 	def setupUp(self):
 		self.setupWnd.deiconify()
+		
+	def optionsUp(self):
+		self.optionsWnd.deiconify()
 		
 	def monitorUp(self):
 		self.monitorWnd.deiconify()

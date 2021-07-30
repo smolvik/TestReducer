@@ -10,26 +10,27 @@ from enum import IntEnum
 import struct
 import lzma
 import xlsxwriter
-import threading
 import time
+from trgdef import CmdEnum
 
 class SetupApp(DialogApp):
 	
-	class CmdEnum(IntEnum):
-		START=1
-		PAUSE=2
-		STOP=3
-		ALIVE=4
-		EXIT=5
+	# ~ class CmdEnum(IntEnum):
+		# ~ START=1
+		# ~ PAUSE=2
+		# ~ STOP=3
+		# ~ ALIVE=4
+		# ~ SETPAR=5
+		# ~ EXIT=6
 	
-	def __init__(self, parent, title, prc):
+	def __init__(self, parent, title, prc, cmdC, cmdQ):
 		print('OscillApp')
 		
 		
 		self.cmdParam={}
 		
-		self.cmdQueue = []
-		self.cmdCondition = threading.Condition()
+		self.cmdCondition = cmdC
+		self.cmdQueue = cmdQ
 		
 		self.param = []
 		self.param.append(tkinter.StringVar())
@@ -280,7 +281,7 @@ class SetupApp(DialogApp):
 		
 	def pauseproc(self):
 		print('pause proc')
-		self.cmdParam['cmd'] = self.CmdEnum.PAUSE
+		self.cmdParam['cmd'] = CmdEnum.PAUSE
 		
 		with self.cmdCondition:
 			self.cmdQueue.append(self.cmdParam)
@@ -288,7 +289,7 @@ class SetupApp(DialogApp):
 		
 	def stopproc(self):
 		print('stop proc')
-		self.cmdParam['cmd'] = self.CmdEnum.STOP
+		self.cmdParam['cmd'] = CmdEnum.STOP
 		
 		with self.cmdCondition:
 			self.cmdQueue.append(self.cmdParam)
@@ -298,7 +299,7 @@ class SetupApp(DialogApp):
 		print('start proc')
 		self.cmdParam['savemod'] = self.cboxSaveMode.current()
 		self.cmdParam['numcyc'] = self.numCycles.get()
-		self.cmdParam['cmd'] = self.CmdEnum.START
+		self.cmdParam['cmd'] = CmdEnum.START
 		print(self.cmdParam)
 		
 		with self.cmdCondition:

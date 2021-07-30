@@ -55,7 +55,7 @@ class ModbusUdpClient:
 		for r in regs:
 			req += struct.pack('>H', r)
 		pdu=self.execute(req)
-		#print(pdu)
+		print(pdu)
 		
 		resp=()
 		if pdu:
@@ -94,7 +94,7 @@ class ModbusUdpClient:
 		req += struct.pack('>H', addrtoread)	# starting address
 		req += struct.pack('>H', ntoread)		# quantity of registers
 		pdu=self.execute(req)
-				
+						
 		if pdu[0] & 0x80:
 			print('modbus error: {}'.format(pdu[1]))
 		else:
@@ -114,12 +114,12 @@ class ModbusUdpClient:
 		req += struct.pack('B', 0x18)		# function code
 		req += struct.pack('>H', adrfifo)	# fifo pointer address
 		pdu=self.execute(req)
-		#print(pdu)
+		print(pdu)
 		fres = False
 		if pdu:
 			if pdu[0] & 0x80:
 				print('modbus error: {}'.format(pdu[1]))
-			elif (len(pdu)>5) and (pdu[0] == 0x18):
+			elif (len(pdu)>=5) and (pdu[0] == 0x18):
 				fres = True
 				nmsg = struct.unpack('>HH', pdu[1:5])
 				nreg = nmsg[1]

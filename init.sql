@@ -1,5 +1,6 @@
 drop table if exists Profiles;
 drop table if exists Cyclograms;
+drop table if exists COptions;
 
 /* Profiles - таблица параметров режима эксплуатационного цикла 
 name - 				Наименование режима

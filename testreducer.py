@@ -14,6 +14,8 @@ import math
 from modbus_udp import ModbusUdpClient
 import lzma
 import struct
+import configparser
+from trgdef import CmdEnum
 
 #mainApp = 0
 
@@ -87,12 +89,20 @@ def msgLoop(args):
 		msg += [j for i,j in cyc]
 		
 		return msg
-	
-	#modbusClient = ModbusUdpClient('10.1.0.2', 4660, 17)
-	modbusClient = ModbusUdpClient('10.0.0.1', 4660, 17)
+
+	config = configparser.ConfigParser()
+	config.read('test.ini')
+
+	ipcont = '10.0.0.1'
+	if 'CONTROLLER' in config:
+		ipcont = config['CONTROLLER']['IP']
+		#print(ipcont)
+
+	#modbusClient = ModbusUdpClient('10.1.0.2', 502, 17)
+	modbusClient = ModbusUdpClient(ipcont, 502, 17)
 	curCmd = {}
 
-	tlmFileName = 'tlm.xz'	
+	tlmFileName = 'tlm.xz'
 	#tlmFd = open(tlmFileName, mode='wb')
 	#tlmFd.close()
 	tlmFd = None
@@ -113,31 +123,36 @@ def msgLoop(args):
 		
 		# read command
 		if cmd:
-			if cmd.get('cmd') == mainApp.setupApp.CmdEnum.START:
+			if cmd.get('cmd') == CmdEnum.START:
 				curCmd = cmd
 				regs = [1,] + cmd2msg(cmd)
 				if modbusClient.pdu_write_holding_registers(0x0000, regs):
 					mainApp.updateLogMsg('Команда доставлена в контроллер\n')
 				else:
 					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
-			elif cmd.get('cmd') == mainApp.setupApp.CmdEnum.PAUSE:
+			elif cmd.get('cmd') == CmdEnum.PAUSE:
 				if modbusClient.pdu_write_holding_registers(0x0000, [2,]):
 					mainApp.updateLogMsg('Команда доставлена в контроллер\n')
 				else:
 					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
-			elif cmd.get('cmd') == mainApp.setupApp.CmdEnum.STOP:
+			elif cmd.get('cmd') == CmdEnum.STOP:
 				if modbusClient.pdu_write_holding_registers(0x0000, [3,]):
 					mainApp.updateLogMsg('Команда доставлена в контроллер\n')
 				else:
 					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
-			elif cmd.get('cmd') == mainApp.setupApp.CmdEnum.EXIT:
+			elif cmd.get('cmd') == CmdEnum.EXIT:
 				return
+			elif cmd.get('cmd') == CmdEnum.SETPAR:
+				if modbusClient.pdu_write_holding_registers(0x0020, cmd.get('dat')):
+					mainApp.updateLogMsg('Команда доставлена в контроллер\n')
+				else:
+					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
 		
 		# read telemetry
 		fres,regs = modbusClient.read_fifo_queue(0x200)
 		if not fres:
 			try:
-				mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
+				mainApp.updateLogMsg('Ошибка2: контроллер не отвечает\n')
 			except RuntimeError:
 				return
 		elif regs:
@@ -191,7 +206,7 @@ def main():
 	root.mainloop()
 	
 	with mainApp.setupApp.cmdCondition:
-		mainApp.setupApp.cmdQueue.append({'cmd':mainApp.setupApp.CmdEnum.EXIT})
+		mainApp.setupApp.cmdQueue.append({'cmd':CmdEnum.EXIT})
 		mainApp.setupApp.cmdCondition.notifyAll()
 		
 	thrTimer.join()
