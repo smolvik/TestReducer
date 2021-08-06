@@ -142,6 +142,16 @@ def msgLoop(args):
 					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
 			elif cmd.get('cmd') == CmdEnum.EXIT:
 				return
+			elif cmd.get('cmd') == CmdEnum.IDENT:
+				idregs = modbusClient.pdu_read_input_registers(0x0100, 4)
+				print(idregs)
+				if idregs:
+					bt=struct.pack('>HHHH', idregs[0], idregs[1], idregs[2], idregs[3])
+					mainApp.updateLogMsg('Версия контроллера: {:04x}\n'.format(idregs[3]))
+					mainApp.updateLogMsg('Версия ПО контроллера: {:04x}{:04x}{:04x}\n'.format(
+						(idregs[0]), (idregs[1]), (idregs[2])))					
+				else:
+					mainApp.updateLogMsg('Ошибка: контроллер не отвечает\n')
 			elif cmd.get('cmd') == CmdEnum.SETPAR:
 				if modbusClient.pdu_write_holding_registers(0x0020, cmd.get('dat')):
 					mainApp.updateLogMsg('Команда доставлена в контроллер\n')

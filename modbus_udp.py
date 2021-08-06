@@ -114,7 +114,7 @@ class ModbusUdpClient:
 		req += struct.pack('B', 0x18)		# function code
 		req += struct.pack('>H', adrfifo)	# fifo pointer address
 		pdu=self.execute(req)
-		print(pdu)
+		#print(pdu)
 		fres = False
 		if pdu:
 			if pdu[0] & 0x80:

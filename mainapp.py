@@ -15,6 +15,7 @@ import struct
 import lzma
 import xlsxwriter
 import threading
+from trgdef import CmdEnum
 
 class MainApp():
 	def __init__(self, parent):
@@ -108,6 +109,13 @@ class MainApp():
 		#self.textbox.insert(tkinter.INSERT, 'md5sum='+hashobj.hexdigest()+'\n*****************\n')
 		self.updateLogMsg('Программа управления САУ в1.1 md5sum={}\n'.format(hashobj.hexdigest()))
 		#self.updateLogMsg('md5sum={}\n'.format(hashobj.hexdigest()))
+		
+		cmdParam = {}
+		cmdParam['cmd'] = CmdEnum.IDENT
+		
+		with self.cmdCondition:
+			self.cmdQueue.append(cmdParam)
+			self.cmdCondition.notifyAll()
 
 	def onCheck(self):
 		pass

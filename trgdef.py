@@ -7,3 +7,4 @@ class CmdEnum(IntEnum):
 	ALIVE=4
 	SETPAR=5
 	EXIT=6
+	IDENT=7
